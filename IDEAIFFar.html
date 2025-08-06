@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel | IDEAIFFar Innovation</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* Estilização Geral e Variáveis */
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f0f2f5;
+            --header-color: #ffffff;
+            --text-color: #333;
+            --progress-bar-bg: #e9ecef;
+            --progress-bar-fill: #28a745;
+            --header-height: 60px;
+            --border-radius: 15px;
+        }
+
+        /* Reset e Configurações Globais */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Impede a rolagem da página */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+        }
+
+        body {
+            padding-top: var(--header-height);
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--header-height);
+            background-color: var(--header-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            color: var(--primary-color);
+            margin-left: 15px;
+        }
+
+        .menu-icon {
+            font-size: 2rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-color);
+            z-index: 1200; /* Para ficar acima de qualquer overlay */
+        }
+
+        /* Drawer Menu */
+        .drawer {
+            position: fixed;
+            top: 0;
+            left: -380px; /* Começa oculto */
+            width: 380px;
+            height: 100%;
+            background-color: #fff;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drawer.open {
+            transform: translateX(380px);
+        }
+
+        .drawer-header { padding: 20px; background-color: var(--primary-color); color: white; }
+        .drawer-header h2 { margin: 0; }
+        .drawer-content { flex-grow: 1; overflow-y: auto; padding: 10px; }
+
+        .etapa-config { display: flex; align-items: center; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+        .etapa-config input[type="text"] { flex-grow: 1; margin-right: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .etapa-config input[type="number"] { width: 70px; margin-right: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .etapa-config .duration-unit { margin-left: -5px; margin-right: 10px; color: var(--secondary-color); font-size: 0.9em;}
+
+        .icon-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; }
+        .icon-btn .material-icons { font-size: 24px; }
+        .remove-btn { color: #dc3545; }
+        .add-etapa-btn { color: var(--primary-color); padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-top: 10px; } /* Style for new add etapa button position */
+        .add-etapa-btn:hover { background-color: #f0f0f0; } /* Hover for add button */
+
+
+        .config-extra { padding: 15px 20px; border-top: 1px solid #eee; }
+        .config-extra label { margin-right: 5px; }
+        .config-extra input { width: auto; padding: 8px; margin-top: 5px; }
+        .drawer-footer { padding: 20px; display: flex; justify-content: flex-end; border-top: 1px solid #eee; gap: 10px; } /* Use flex-end and gap for buttons */
+
+        #save-config-btn { padding: 10px 20px; background-color: var(--progress-bar-fill); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; transition: background-color 0.2s; }
+        #save-config-btn:hover { background-color: #218838; }
+
+        #cancel-config-btn { padding: 10px 20px; background-color: var(--secondary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; transition: background-color 0.2s; }
+        #cancel-config-btn:hover { background-color: #5a6268; }
+
+
+        /* Dashboard Principal */
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 15px;
+            height: calc(100vh - var(--header-height));
+            width: 100%;
+            transition: filter 0.3s ease-in-out;
+        }
+        
+        body.drawer-open .dashboard {
+            filter: brightness(0.5);
+            pointer-events: none;
+        }
+
+        .etapa {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            background-color: var(--progress-bar-bg);
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: flex 0.5s ease-in-out, opacity 0.5s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        .etapa.active {
+            flex: 5;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+        }
+
+        .etapa.finished { opacity: 0.5; }
+
+        .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, var(--progress-bar-fill), #5cdb95);
+            border-radius: var(--border-radius);
+            transition: width 0.5s linear;
+        }
+        
+        .etapa.finished .progress-bar { background: var(--secondary-color); }
+        
+        .etapa-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 2;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+        }
+
+        .etapa-nome {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .timer {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: black;
+            text-shadow: none;
+        }
+
+        .play-pause-btn {
+            font-size: 2.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+            pointer-events: all; /* Garante que o botão seja clicável mesmo com o painel desativado */
+        }
+
+        .play-pause-btn:hover { background: rgba(255, 255, 255, 0.4); }
+
+        .etapa.active .etapa-nome { font-size: 2rem; }
+        .etapa.active .timer { font-size: 9.5rem; }
+        .etapa.active .play-pause-btn { width: 70px; height: 70px; font-size: 3.5rem; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <button id="menu-toggle" class="menu-icon">☰</button>
+        <h1>IDEAIFFar Innovation</h1>
+    </header>
+
+    <nav id="drawer-menu" class="drawer">
+        <div class="drawer-header"><h2>Configurações</h2></div>
+        <div class="drawer-content">
+            <div id="etapas-config-container"></div>
+            <button id="add-etapa-btn" class="icon-btn add-etapa-btn">
+                <i class="material-icons">add</i> Adicionar Etapa
+            </button>
+            <div class="config-extra">
+                <label for="aviso-input">Avisar quando faltar:</label>
+                <input type="number" id="aviso-input" value="1" min="1">
+                <span class="duration-unit">minutos</span>
+            </div>
+        </div>
+        <div class="drawer-footer">
+            <button id="cancel-config-btn">Cancelar</button>
+            <button id="save-config-btn">Salvar Alterações</button>
+        </div>
+    </nav>
+
+    <main id="dashboard" class="dashboard"></main>
+    
+    <audio id="aviso" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+    <audio id="endSound" src="https://actions.google.com/sounds/v1/alarms/beep_loop.ogg" preload="auto"></audio>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let etapas = [
+            { nome: 'Brainstorming de Ideias', duracao: 20 }, { nome: 'Definição do Problema', duracao: 20 },
+            { nome: 'Construção do Questionário', duracao: 30 }, { nome: 'Validação do Problema', duracao: 60 },
+            { nome: 'Solução e Validação', duracao: 180 }, { nome: 'Modelo de Negócio – BMC', duracao: 30 },
+            { nome: 'Pitch', duracao: 30 }, { nome: 'Alinhamentos Finais', duracao: 30 }, { nome: 'Apresentações', duracao: 60 },
+        ];
+        // Store original state for "Cancel" functionality
+        let originalEtapas = [];
+        let originalTempoAvisoMinutos = 1;
+
+        let etapaAtivaIndex = null, countdownInterval = null, tempoRestanteGlobal = 0, isPaused = false, tempoAvisoMinutos = 1; 
+
+        const menuToggle = document.getElementById('menu-toggle');
+        const drawerMenu = document.getElementById('drawer-menu');
+        const dashboard = document.getElementById('dashboard');
+        const etapasConfigContainer = document.getElementById('etapas-config-container');
+        const addEtapaBtn = document.getElementById('add-etapa-btn');
+        const saveConfigBtn = document.getElementById('save-config-btn');
+        const cancelConfigBtn = document.getElementById('cancel-config-btn');
+        const avisoInput = document.getElementById('aviso-input');
+        const avisoSound = document.getElementById('aviso');
+        const endSound = document.getElementById('endSound');
+        const body = document.body;
+
+        // Flag to control outside click behavior after user interaction (like a confirm dialog)
+        let isInteractingWithDrawer = false; 
+
+        function inicializarApp() {
+            // Load from localStorage or use defaults
+            const savedEtapas = localStorage.getItem('etapasConfig');
+            const savedTempoAviso = localStorage.getItem('tempoAvisoMinutos');
+
+            if (savedEtapas) {
+                etapas = JSON.parse(savedEtapas);
+            }
+            if (savedTempoAviso) {
+                tempoAvisoMinutos = parseInt(savedTempoAviso);
+            }
+            
+            // Initial capture of original state
+            originalEtapas = JSON.parse(JSON.stringify(etapas));
+            originalTempoAvisoMinutos = tempoAvisoMinutos;
+
+            renderizarConfigMenu();
+            renderizarDashboard();
+            adicionarEventListenersGlobais();
+            avisoInput.value = tempoAvisoMinutos; 
+        }
+
+        function renderizarConfigMenu() {
+            etapasConfigContainer.innerHTML = '';
+            etapas.forEach((etapa, index) => {
+                const configEl = document.createElement('div');
+                configEl.className = 'etapa-config';
+                configEl.innerHTML = `
+                    <input type="text" value="${etapa.nome}" data-index="${index}" class="etapa-nome-input">
+                    <input type="number" value="${etapa.duracao}" data-index="${index}" class="etapa-duracao-input" min="1">
+                    <span class="duration-unit">minutos</span>
+                    <button class="icon-btn remove-btn" data-index="${index}"><i class="material-icons">remove_circle_outline</i></button>
+                `;
+                etapasConfigContainer.appendChild(configEl);
+            });
+        }
+
+        function renderizarDashboard() {
+            dashboard.innerHTML = '';
+            etapas.forEach((etapa, index) => {
+                const tempoTotalEmSegundos = etapa.duracao * 60;
+                const minutos = Math.floor(tempoTotalEmSegundos / 60).toString().padStart(2, '0');
+                const segundos = (tempoTotalEmSegundos % 60).toString().padStart(2, '0');
+                const etapaEl = document.createElement('div');
+                etapaEl.className = 'etapa';
+                etapaEl.id = `etapa-${index}`;
+                etapaEl.innerHTML = `
+                    <div class="progress-bar"></div>
+                    <div class="etapa-content">
+                        <span class="etapa-nome">${etapa.nome}</span>
+                        <span class="timer">${minutos}:${segundos}</span>
+                        <button class="play-pause-btn" data-index="${index}"><i class="material-icons">play_arrow</i></button>
+                    </div>
+                `;
+                dashboard.appendChild(etapaEl);
+            });
+            adicionarEventListenersDasEtapas();
+        }
+
+        function toggleMenu() {
+            const isOpen = drawerMenu.classList.toggle('open');
+            body.classList.toggle('drawer-open', isOpen);
+            // When opening the menu, refresh original state from the current 'live' state
+            // to ensure 'cancel' always reverts to what was there when opened.
+            if (isOpen) {
+                originalEtapas = JSON.parse(JSON.stringify(etapas));
+                originalTempoAvisoMinutos = tempoAvisoMinutos;
+                // Re-render config menu to show current values, just in case they changed
+                // without explicitly saving (e.g., removing via prompt before closing)
+                renderizarConfigMenu();
+                avisoInput.value = tempoAvisoMinutos;
+            }
+            isInteractingWithDrawer = isOpen; // Set flag when menu state changes
+        }
+
+        function adicionarEventListenersGlobais() {
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMenu();
+            });
+
+            // Handle clicks outside the drawer
+            document.addEventListener('click', (e) => {
+                // If the drawer is open AND the click is outside the drawer AND not on the menu toggle
+                if (drawerMenu.classList.contains('open') && !drawerMenu.contains(e.target) && e.target !== menuToggle) {
+                    // Use a small timeout to prevent immediate close after confirm dialogs,
+                    // which can sometimes register an "outside click" instantly.
+                    setTimeout(() => {
+                        // Only close if we're not actively interacting with something that keeps the drawer open
+                        if (!isInteractingWithDrawer) {
+                            // If there are unsaved changes, revert them when closing implicitly
+                            const currentEtapas = Array.from(document.querySelectorAll('.etapa-config')).map(el => ({
+                                nome: el.querySelector('.etapa-nome-input').value.trim(),
+                                duracao: parseInt(el.querySelector('.etapa-duracao-input').value) || 1
+                            }));
+                            const currentTempoAviso = parseInt(avisoInput.value) || 1;
+
+                            const etapasChanged = JSON.stringify(currentEtapas) !== JSON.stringify(originalEtapas);
+                            const tempoAvisoChanged = currentTempoAviso !== originalTempoAvisoMinutos;
+
+                            if (etapasChanged || tempoAvisoChanged) {
+                                // Revert changes if closing implicitly with unsaved data
+                                handleCancelConfig(true); // Call with alert for discard
+                            } else {
+                                toggleMenu(); // Close silently if no changes
+                            }
+                        }
+                    }, 50); // Small delay
+                }
+            });
+
+            // Set the flag when interacting *within* the drawer to prevent immediate outside close
+            drawerMenu.addEventListener('click', (e) => {
+                isInteractingWithDrawer = true;
+                // Reset flag after a very short delay, allowing the browser to process clicks
+                // and not misinterpret a 'confirm' dialog closing as an outside click.
+                setTimeout(() => {
+                    isInteractingWithDrawer = false;
+                }, 100); 
+            });
+
+
+            addEtapaBtn.addEventListener('click', () => {
+                etapas.push({ nome: 'Nova Etapa', duracao: 10 });
+                renderizarConfigMenu(); // Keep menu open
+            });
+
+            etapasConfigContainer.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('.remove-btn');
+                if (removeBtn) {
+                    const indexToRemove = parseInt(removeBtn.dataset.index);
+                    const etapaNome = etapas[indexToRemove].nome;
+                    // Set flag before showing confirm to prevent outside click logic from firing immediately
+                    isInteractingWithDrawer = true; 
+                    if (confirm(`Tem certeza que deseja remover a etapa "${etapaNome}"?`)) {
+                        etapas.splice(indexToRemove, 1);
+                        renderizarConfigMenu(); // Re-render to update the list and indices
+                        // Important: Do NOT update originalEtapas here. Changes are only "live" until saved.
+                        // originalEtapas is only for reverting to last saved state.
+                    }
+                    // Reset flag after confirm dialog, but with a slight delay
+                    setTimeout(() => {
+                        isInteractingWithDrawer = false;
+                    }, 100);
+                }
+            });
+
+            saveConfigBtn.addEventListener('click', handleSaveConfig);
+            cancelConfigBtn.addEventListener('click', () => handleCancelConfig(true)); // Pass true to show alert
+        }
+
+        function adicionarEventListenersDasEtapas() {
+            document.querySelectorAll('.play-pause-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handlePlayPauseClick(parseInt(btn.dataset.index));
+                });
+            });
+        }
+
+        function handleSaveConfig() {
+            const novosNomes = document.querySelectorAll('.etapa-nome-input');
+            const novasDuracoes = document.querySelectorAll('.etapa-duracao-input');
+            const novasEtapas = [];
+            let isValid = true;
+            novosNomes.forEach((input, i) => {
+                const duracao = parseInt(novasDuracoes[i].value);
+                if (input.value.trim() === '' || isNaN(duracao) || duracao < 1) {
+                    isValid = false;
+                }
+                novasEtapas.push({
+                    nome: input.value.trim(),
+                    duracao: duracao || 1 // Ensure minimum 1 minute
+                });
+            });
+
+            if (!isValid) {
+                alert('Por favor, preencha todos os nomes das etapas e garanta que as durações sejam números válidos (mínimo 1 minuto).');
+                return;
+            }
+
+            etapas = novasEtapas; // Apply changes to the live 'etapas' array
+            tempoAvisoMinutos = parseInt(avisoInput.value) || 1; 
+
+            // Save the new configuration to localStorage
+            localStorage.setItem('etapasConfig', JSON.stringify(etapas));
+            localStorage.setItem('tempoAvisoMinutos', tempoAvisoMinutos);
+            
+            // Update original state to reflect the newly saved changes
+            originalEtapas = JSON.parse(JSON.stringify(etapas));
+            originalTempoAvisoMinutos = tempoAvisoMinutos;
+
+            alert('Configurações salvas!');
+            if (drawerMenu.classList.contains('open')) {
+                toggleMenu(); // Close the menu after saving
+            }
+            resetarTudo();
+        }
+
+        function handleCancelConfig(showAlert = true) {
+            // Revert to original state
+            etapas = JSON.parse(JSON.stringify(originalEtapas)); // Revert 'etapas'
+            tempoAvisoMinutos = originalTempoAvisoMinutos; // Revert 'tempoAvisoMinutos'
+            
+            // Update the UI to reflect the reverted data
+            renderizarConfigMenu();
+            avisoInput.value = tempoAvisoMinutos;
+            
+            if (showAlert) {
+                alert('Alterações descartadas.');
+            }
+            if (drawerMenu.classList.contains('open')) {
+                toggleMenu(); // Close the menu after canceling
+            }
+            resetarTudo(); // Re-render dashboard with original settings
+        }
+
+        function handlePlayPauseClick(index) {
+            if (etapaAtivaIndex !== null && etapaAtivaIndex !== index) {
+                alert('Uma etapa já está em andamento. Pause ou finalize-a antes de iniciar outra.');
+                return;
+            }
+            const etapaEl = document.getElementById(`etapa-${index}`);
+            const playPauseBtnIcon = etapaEl.querySelector('.play-pause-btn .material-icons');
+            
+            if (etapaAtivaIndex === null) { // Iniciar uma nova etapa
+                etapaAtivaIndex = index;
+                tempoRestanteGlobal = etapas[index].duracao * 60;
+                isPaused = false;
+                etapaEl.classList.add('active');
+                playPauseBtnIcon.textContent = 'pause';
+                iniciarTimer();
+            } else { // Pausar ou retomar a etapa ativa
+                isPaused = !isPaused;
+                if (isPaused) {
+                    clearInterval(countdownInterval);
+                    playPauseBtnIcon.textContent = 'play_arrow';
+                } else {
+                    playPauseBtnIcon.textContent = 'pause';
+                    iniciarTimer();
+                }
+            }
+        }
+
+        function iniciarTimer() {
+            const duracaoTotal = etapas[etapaAtivaIndex].duracao * 60;
+            const tempoAvisoSegundos = tempoAvisoMinutos * 60;
+            countdownInterval = setInterval(() => {
+                tempoRestanteGlobal--;
+                atualizarProgresso(etapaAtivaIndex, duracaoTotal, tempoRestanteGlobal);
+
+                if (tempoRestanteGlobal === tempoAvisoSegundos) {
+                    tocarSom(avisoSound);
+                }
+
+                if (tempoRestanteGlobal <= 0) {
+                    finalizarEtapa(etapaAtivaIndex);
+                }
+            }, 1000);
+        }
+        
+        function atualizarProgresso(index, duracaoTotal, tempoRestante) {
+            const etapaEl = document.getElementById(`etapa-${index}`);
+            if (!etapaEl) return;
+            
+            const progresso = ((duracaoTotal - tempoRestante) / duracaoTotal) * 100;
+            etapaEl.querySelector('.progress-bar').style.width = `${progresso}%`;
+
+            const minutos = Math.floor(tempoRestante / 60).toString().padStart(2, '0');
+            const segundos = (tempoRestante % 60).toString().padStart(2, '0');
+            etapaEl.querySelector('.timer').textContent = `${minutos}:${segundos}`;
+        }
+
+        function finalizarEtapa(index) {
+            clearInterval(countdownInterval);
+            const etapaEl = document.getElementById(`etapa-${index}`);
+            etapaEl.classList.remove('active');
+            etapaEl.classList.add('finished');
+            etapaEl.querySelector('.progress-bar').style.width = '100%';
+            etapaEl.querySelector('.play-pause-btn').style.display = 'none';
+            
+            tocarSom(endSound, 4);
+
+            etapaAtivaIndex = null;
+            countdownInterval = null;
+            isPaused = false;
+        }
+        
+        function resetarTudo() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            etapaAtivaIndex = null;
+            isPaused = false;
+            countdownInterval = null;
+            renderizarDashboard();
+        }
+
+        function tocarSom(audioElement, durationInSeconds = null) {
+            audioElement.currentTime = 0;
+            audioElement.play().catch(e => console.error("Erro ao tocar áudio:", e));
+            if (durationInSeconds) {
+                setTimeout(() => {
+                    audioElement.pause();
+                    audioElement.currentTime = 0;
+                }, durationInSeconds * 1000);
+            }
+        }
+        
+        inicializarApp();
+    });
+    </script>
+</body>
+</html>
